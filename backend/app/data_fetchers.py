@@ -72,6 +72,19 @@ async def fetch_holidays(target_date: date) -> List[Holiday]:
     """
     Fetch holidays or observances for the given date using Calendarific.
 
-    In this skeleton implementation, return an empty list.
-    """
-    return []
+    api_key = os.getenv("CALENDARIFIC_API_KEY")
+    if not api_key:
+        return []
+    url = f"https://calendarific.com/api/v2/holidays?api_key={api_key}&country=MX&year={target_date.year}&month={target_date.month}&day={target_date.day}"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, timeout=10)
+            data = resp.json()
+    except Exception:
+        return []
+    holidays: List[Holiday] = []
+    for h in data.get("response", {}).get("holidays", []):
+        tv = h.get("type", [])
+        type_str = ", ".join(tv) if isinstance(tv, list) else str(tv)
+        holidays.append(Holiday(name=h.get("name", ""), type=type_str, source="calendarific"))
+    return holidays
